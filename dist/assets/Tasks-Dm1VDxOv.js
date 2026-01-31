@@ -1,0 +1,31 @@
+import{c as h,a as i,S as l,j as e,d as N}from"./index-LF0qJdOy.js";import{P as v}from"./plus-u6twbfTO.js";const b=[["circle",{cx:"12",cy:"12",r:"10",key:"1mglay"}],["path",{d:"m9 12 2 2 4-4",key:"dzmm74"}]],y=h("circle-check",b);const f=[["circle",{cx:"12",cy:"12",r:"10",key:"1mglay"}]],k=h("circle",f),T=()=>{const[d,o]=i.useState(()=>l.getTasks()),[g,r]=i.useState(!1),[a,t]=i.useState({type:"",size:"",quantity:1,rate:0,total:0,advance:0,due:0}),m=a.quantity*a.rate,p=m-a.advance,j=s=>{s.preventDefault();const n={...a,id:Date.now().toString(),total:m,due:p,completed:!1};l.saveTask(n),o(l.getTasks()),r(!1),t({type:"",size:"",quantity:1,rate:0,total:0,advance:0,due:0})},u=s=>{const n={...s,completed:!s.completed};l.saveTask(n),o(l.getTasks())},c=d.filter(s=>!s.completed),x=d.filter(s=>s.completed);return e.jsxs("div",{className:"tasks-page",children:[e.jsxs("div",{className:"page-header flex justify-between items-center mb-8",children:[e.jsxs("div",{children:[e.jsxs("h1",{className:"flex items-center",children:[e.jsx("span",{className:"header-icon-container",children:e.jsx(N,{size:18})}),"অসম্পূর্ণ কাজ"]}),e.jsx("p",{className:"text-muted mt-1",children:"চলমান কাজের তালিকা ও ট্র্যাকিং"})]}),e.jsxs("button",{className:"btn btn-primary",onClick:()=>r(!0),children:[e.jsx(v,{size:20})," নতুন কাজ যোগ করুন"]})]}),g&&e.jsx("div",{className:"card mb-8",children:e.jsxs("form",{onSubmit:j,className:"task-form",children:[e.jsxs("div",{className:"grid grid-cols-2 gap-6",children:[e.jsxs("div",{className:"input-group",children:[e.jsx("label",{className:"label",children:"কাজের ধরণ"}),e.jsx("input",{type:"text",className:"input",value:a.type,onChange:s=>t({...a,type:s.target.value}),placeholder:"যেমন: ব্যানার প্রিন্ট",required:!0})]}),e.jsxs("div",{className:"input-group",children:[e.jsx("label",{className:"label",children:"সাইজ/মাপ"}),e.jsx("input",{type:"text",className:"input",value:a.size,onChange:s=>t({...a,size:s.target.value}),placeholder:"যেমন: ১০ x ৪ ফিট",required:!0})]})]}),e.jsxs("div",{className:"grid grid-cols-4 gap-6",children:[e.jsxs("div",{className:"input-group",children:[e.jsx("label",{className:"label",children:"পরিমাণ"}),e.jsx("input",{type:"number",className:"input",value:a.quantity,onChange:s=>t({...a,quantity:Number(s.target.value)}),required:!0})]}),e.jsxs("div",{className:"input-group",children:[e.jsx("label",{className:"label",children:"রেট"}),e.jsx("input",{type:"number",className:"input",value:a.rate,onChange:s=>t({...a,rate:Number(s.target.value)}),required:!0})]}),e.jsxs("div",{className:"input-group",children:[e.jsx("label",{className:"label",children:"অগ্রিম"}),e.jsx("input",{type:"number",className:"input",value:a.advance,onChange:s=>t({...a,advance:Number(s.target.value)}),required:!0})]}),e.jsxs("div",{className:"input-group",children:[e.jsx("label",{className:"label",children:"বাকী"}),e.jsx("input",{type:"number",className:"input",value:p,disabled:!0})]})]}),e.jsxs("div",{className:"form-actions",children:[e.jsx("button",{type:"button",className:"btn btn-secondary",onClick:()=>r(!1),children:"বাতিল"}),e.jsx("button",{type:"submit",className:"btn btn-primary",children:"যোগ করুন"})]})]})}),e.jsxs("div",{className:"tasks-sections",children:[e.jsxs("section",{className:"task-section",children:[e.jsxs("h3",{children:["চলমান কাজ (",c.length,")"]}),e.jsx("div",{className:"task-list",children:c.length===0?e.jsx("p",{className:"empty-text",children:"কোন চলমান কাজ নেই"}):c.map(s=>e.jsxs("div",{className:"task-card card",children:[e.jsxs("div",{className:"task-info",children:[e.jsx("h4",{children:s.type}),e.jsxs("span",{className:"task-meta",children:[s.size," | ",s.quantity," টি | ",s.rate," টাকা করে"]}),e.jsxs("div",{className:"task-money",children:[e.jsxs("span",{className:"total",children:["মোট: ৳",s.total]}),e.jsxs("span",{className:"due",children:["বাকী: ৳",s.due]})]})]}),e.jsxs("button",{className:"complete-toggle",onClick:()=>u(s),children:[e.jsx(k,{size:24}),e.jsx("span",{children:"সম্পন্ন করুন"})]})]},s.id))})]}),e.jsxs("section",{className:"task-section completed",children:[e.jsxs("h3",{children:["সম্পন্ন কাজ (",x.length,")"]}),e.jsx("div",{className:"task-list",children:x.map(s=>e.jsxs("div",{className:"task-card card done",children:[e.jsxs("div",{className:"task-info",children:[e.jsx("h4",{children:s.type}),e.jsx("span",{className:"task-meta",children:s.size})]}),e.jsxs("button",{className:"complete-toggle success",onClick:()=>u(s),children:[e.jsx(y,{size:24}),e.jsx("span",{children:"সম্পন্ন"})]})]},s.id))})]})]}),e.jsx("style",{children:`
+        .tasks-page { width: 100%; }
+        .task-form { padding: 1rem; }
+        .mb-8 { margin-bottom: 2rem; }
+        
+        .tasks-sections { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+        @media (max-width: 1024px) { .tasks-sections { grid-template-columns: 1fr; } }
+
+        .task-section h3 { margin-bottom: 1.5rem; color: var(--text-muted); font-size: 1rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        .task-list { display: flex; flex-direction: column; gap: 1rem; }
+        
+        .task-card { display: flex; justify-content: space-between; align-items: center; padding: 1.25rem; border-left: 4px solid var(--primary); }
+        .task-card.done { border-left-color: var(--success); opacity: 0.7; }
+        
+        .task-info h4 { font-size: 1.125rem; margin-bottom: 0.25rem; }
+        .task-meta { font-size: 0.875rem; color: var(--text-muted); }
+        .task-money { margin-top: 0.5rem; display: flex; gap: 1rem; font-size: 0.875rem; font-weight: 700; }
+        .task-money .due { color: var(--danger); }
+        
+        .complete-toggle { 
+          display: flex; flex-direction: column; align-items: center; gap: 0.25rem; 
+          background: none; border: none; color: var(--text-muted); cursor: pointer;
+          transition: all 0.2s;
+        }
+        .complete-toggle:hover { color: var(--primary); }
+        .complete-toggle.success { color: var(--success); }
+        .complete-toggle span { font-size: 0.75rem; font-weight: 700; }
+
+        .empty-text { text-align: center; padding: 2rem; color: var(--text-muted); border: 2px dashed var(--border); border-radius: var(--radius); }
+        .grid-cols-4 { grid-template-columns: repeat(4, 1fr); }
+      `})]})};export{T as default};
