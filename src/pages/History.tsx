@@ -66,8 +66,8 @@ const History = () => {
             isExisting: true,
             name: a.name,
             description: a.description || '',
-            quantity: 1,
-            rate: a.total,
+            quantity: a.quantity || 1,
+            rate: a.rate || a.total,
             paid: a.paid
         })));
         setIsEditModalOpen(true);
@@ -95,24 +95,36 @@ const History = () => {
         setEditRows(editRows.map(r => r.id === id ? { ...r, [field]: value } : r));
     };
 
+    const [saving, setSaving] = useState(false);
+
     const handleUpdate = async (e: React.FormEvent) => {
         e.preventDefault();
-        const updates = editRows.map(row => {
-            const total = (row.quantity || 1) * row.rate;
-            return Storage.saveAccount({
-                id: row.id.startsWith('new-') ? crypto.randomUUID() : row.id,
-                name: row.name,
-                description: row.description,
-                total: total,
-                paid: row.paid,
-                due: total - row.paid,
-                date: editDate
+        setSaving(true);
+        try {
+            const updates = editRows.map(row => {
+                const total = (row.quantity || 1) * row.rate;
+                return Storage.saveAccount({
+                    id: row.id.startsWith('new-') ? crypto.randomUUID() : row.id,
+                    name: row.name,
+                    description: row.description,
+                    quantity: row.quantity,
+                    rate: row.rate,
+                    total: total,
+                    paid: row.paid,
+                    due: total - row.paid,
+                    date: editDate
+                });
             });
-        });
 
-        await Promise.all(updates);
-        fetchAccounts();
-        setIsEditModalOpen(false);
+            await Promise.all(updates);
+            await fetchAccounts();
+            setIsEditModalOpen(false);
+        } catch (error: any) {
+            console.error("Update failed:", error);
+            alert('সংরক্ষণ ব্যর্থ হয়েছে: ' + (error.message || 'Error'));
+        } finally {
+            setSaving(false);
+        }
     };
 
     const handleDeleteDate = async () => {
@@ -184,24 +196,28 @@ const History = () => {
                                 </div>
                             </div>
                             <div className="table-container">
-                                <table>
+                                <table style={{ tableLayout: 'fixed', width: '100%', minWidth: '800px' }}>
                                     <thead>
                                         <tr>
-                                            <th>নাম</th>
-                                            <th>বিবরণ</th>
-                                            <th>মোট</th>
-                                            <th>জমা</th>
-                                            <th>বাকি</th>
+                                            <th style={{ width: '25%' }}>নাম</th>
+                                            <th style={{ width: '25%' }}>বিবরণ</th>
+                                            <th style={{ width: '10%', textAlign: 'center' }}>পরিমাণ</th>
+                                            <th style={{ width: '10%', textAlign: 'center' }}>দর</th>
+                                            <th style={{ width: '10%', textAlign: 'right' }}>মোট</th>
+                                            <th style={{ width: '10%', textAlign: 'right' }}>জমা</th>
+                                            <th style={{ width: '10%', textAlign: 'right' }}>বাকি</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {dateAccounts.map((account) => (
                                             <tr key={account.id}>
-                                                <td><strong>{account.name}</strong></td>
-                                                <td>{account.description}</td>
-                                                <td>৳ {(Number(account.total) || 0).toLocaleString()}</td>
-                                                <td className="text-success">৳ {(Number(account.paid) || 0).toLocaleString()}</td>
-                                                <td className="text-danger">৳ {(Number(account.due) || 0).toLocaleString()}</td>
+                                                <td style={{ wordBreak: 'break-word' }}><strong>{account.name}</strong></td>
+                                                <td style={{ wordBreak: 'break-word' }}>{account.description}</td>
+                                                <td style={{ textAlign: 'center' }}>{account.quantity || '-'}</td>
+                                                <td style={{ textAlign: 'center' }}>{account.rate ? `৳${account.rate}` : '-'}</td>
+                                                <td style={{ textAlign: 'right' }}>৳ {(Number(account.total) || 0).toLocaleString()}</td>
+                                                <td className="text-success" style={{ textAlign: 'right' }}>৳ {(Number(account.paid) || 0).toLocaleString()}</td>
+                                                <td className="text-danger" style={{ textAlign: 'right' }}>৳ {(Number(account.due) || 0).toLocaleString()}</td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -292,9 +308,9 @@ const History = () => {
 
                             <div className="modal-footer mt-8">
                                 <button type="button" className="btn btn-secondary" onClick={() => setIsEditModalOpen(false)}>বাতিল</button>
-                                <button type="submit" className="btn btn-primary lg">
+                                <button type="submit" className="btn btn-primary lg" disabled={saving}>
                                     <Save size={20} className="mr-2" />
-                                    পরিবর্তন সংরক্ষণ করুন
+                                    {saving ? 'সংরক্ষণ হচ্ছে...' : 'পরিবর্তন সংরক্ষণ করুন'}
                                 </button>
                             </div>
                         </form>

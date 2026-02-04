@@ -56,18 +56,44 @@ const Wholesale = () => {
     });
     const [formItems, setFormItems] = useState<{ id?: string; name: string; qty: number; rate: number }[]>([]);
 
-    const stats = useMemo(() => {
-        const customers: Record<string, number> = {};
-        entries.forEach(e => {
-            customers[e.customerName] = e.remainingDue;
+    const groupedSummaries = useMemo(() => {
+        const groups: Record<string, WholesaleEntry[]> = {};
+        entries.forEach(entry => {
+            if (!groups[entry.customerName]) groups[entry.customerName] = [];
+            groups[entry.customerName].push(entry);
         });
 
-        const outstanding = Object.values(customers).reduce((a, b) => a + b, 0);
+        return Object.keys(groups).sort().map(name => {
+            const customerEntries = groups[name].sort((a, b) => {
+                const dateCompare = b.date.localeCompare(a.date);
+                if (dateCompare !== 0) return dateCompare;
+                // If dates are same, sort by ID (timestamp) to get the actual latest
+                return b.id.localeCompare(a.id);
+            });
+            const oldestToNewest = [...customerEntries].reverse();
+
+            return {
+                customerName: name,
+                latestEntry: customerEntries[0],
+                allEntries: customerEntries,
+                summary: {
+                    date: customerEntries[0].date,
+                    initialDue: oldestToNewest[0].previousDue,
+                    totalNew: customerEntries.reduce((sum, e) => sum + e.newAmount, 0),
+                    totalPaid: customerEntries.reduce((sum, e) => sum + e.paidNow, 0),
+                    currentDue: customerEntries[0].remainingDue
+                }
+            };
+        });
+    }, [entries]);
+
+    const stats = useMemo(() => {
+        const outstanding = groupedSummaries.reduce((sum, item) => sum + item.summary.currentDue, 0);
         const totalPaid = entries.reduce((a, b) => a + b.paidNow, 0);
         const totalNew = entries.reduce((a, b) => a + b.newAmount, 0);
 
         return { outstanding, totalPaid, totalNew };
-    }, [entries]);
+    }, [entries, groupedSummaries]);
 
     const [saving, setSaving] = useState(false);
 
@@ -126,39 +152,6 @@ const Wholesale = () => {
             fetchEntries();
         }
     };
-
-
-
-    const groupedSummaries = useMemo(() => {
-        const groups: Record<string, WholesaleEntry[]> = {};
-        entries.forEach(entry => {
-            if (!groups[entry.customerName]) groups[entry.customerName] = [];
-            groups[entry.customerName].push(entry);
-        });
-
-        return Object.keys(groups).sort().map(name => {
-            const customerEntries = groups[name].sort((a, b) => {
-                const dateCompare = b.date.localeCompare(a.date);
-                if (dateCompare !== 0) return dateCompare;
-                // If dates are same, sort by ID (timestamp) to get the actual latest
-                return b.id.localeCompare(a.id);
-            });
-            const oldestToNewest = [...customerEntries].reverse();
-
-            return {
-                customerName: name,
-                latestEntry: customerEntries[0],
-                allEntries: customerEntries,
-                summary: {
-                    date: customerEntries[0].date,
-                    initialDue: oldestToNewest[0].previousDue,
-                    totalNew: customerEntries.reduce((sum, e) => sum + e.newAmount, 0),
-                    totalPaid: customerEntries.reduce((sum, e) => sum + e.paidNow, 0),
-                    currentDue: customerEntries[0].remainingDue
-                }
-            };
-        });
-    }, [entries]);
 
     const addItem = () => setFormItems([...formItems, { name: '', qty: 1, rate: 0 }]);
     const updateItem = (index: number, field: keyof typeof formItems[0], value: any) => {

@@ -338,3 +338,23 @@ const AddAccount = () => {
                     display: flex;
                     align-items: center;
                     justify-content: center;
+                    color: var(--primary);
+                    font-weight: 700;
+                }
+
+                .success-icon-container {
+                    background: #f0fdf4;
+                    width: 120px;
+                    height: 120px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: 50%;
+                    margin: 0 auto;
+                }
+            `}</style>
+        </div>
+    );
+};
+
+export default AddAccount;
