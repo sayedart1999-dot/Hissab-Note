@@ -60,6 +60,8 @@ export interface Account {
     paid: number;
     due: number;
     date: string;
+    quantity?: number;
+    rate?: number;
 }
 
 export interface Task {
@@ -107,15 +109,54 @@ export const Storage = {
             .select('*')
             .order('date', { ascending: false });
         if (error) throw error;
-        return data || [];
+
+        return (data || []).map((item: any) => {
+            let quantity = 0;
+            let rate = 0;
+            let desc = item.description || '';
+
+            // Parse metadata from description (Separator: :::)
+            if (desc && desc.includes(':::')) {
+                const parts = desc.split(':::');
+                if (parts.length === 2) {
+                    try {
+                        const meta = JSON.parse(parts[1]);
+                        quantity = meta.q || 0;
+                        rate = meta.r || 0;
+                        desc = parts[0];
+                    } catch (e) {
+                        // Keep original description if parse fails
+                    }
+                }
+            }
+
+            return {
+                ...item,
+                description: desc,
+                quantity,
+                rate,
+                total: Number(item.total),
+                paid: Number(item.paid),
+                due: Number(item.due)
+            };
+        });
     },
     async saveAccount(account: Account) {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error('Not authenticated');
 
+        // Store metadata in description field to avoid schema changes
+        const meta = JSON.stringify({ q: account.quantity, r: account.rate });
+        // Ensure we don't double-append if editing an existing padded description
+        const cleanDescription = (account.description || '').split(':::')[0];
+        const dbDescription = cleanDescription + ':::' + meta;
+
+        // Exclude UI-only fields from payload, use modified description
+        const { quantity, rate, description, ...dbData } = account;
+
         const { error } = await supabase
             .from('accounts')
-            .upsert({ ...account, user_id: user.id });
+            .upsert({ ...dbData, description: dbDescription, user_id: user.id });
         if (error) throw error;
     },
     async deleteAccount(id: string) {
