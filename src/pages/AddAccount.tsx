@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Storage } from '../lib/storage';
 import { Trash2, Save, CheckCircle, PlusCircle } from 'lucide-react';
@@ -16,6 +16,20 @@ const AddAccount = () => {
     const navigate = useNavigate();
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     const [showSuccess, setShowSuccess] = useState(false);
+    const [customerSuggestions, setCustomerSuggestions] = useState<string[]>([]);
+
+    useEffect(() => {
+        const fetchSuggestions = async () => {
+            try {
+                const accounts = await Storage.getAccounts();
+                const uniqueNames = Array.from(new Set(accounts.map(a => a.name))).sort();
+                setCustomerSuggestions(uniqueNames);
+            } catch (error) {
+                console.error("Failed to fetch suggestions:", error);
+            }
+        };
+        fetchSuggestions();
+    }, []);
 
     const [rows, setRows] = useState<AccountRow[]>(() => [
         { id: Date.now().toString(), name: '', description: '', quantity: 0, rate: 0, paid: 0 }
@@ -141,6 +155,7 @@ const AddAccount = () => {
                                         <input
                                             type="text"
                                             className="row-input"
+                                            list="customer-names"
                                             placeholder="নাম"
                                             value={row.name}
                                             onChange={(e) => updateRow(row.id, 'name', e.target.value)}
@@ -222,6 +237,11 @@ const AddAccount = () => {
                         {loading ? 'সংরক্ষণ করা হচ্ছে...' : 'সবগুলো হিসাব সংরক্ষণ করুন'}
                     </button>
                 </div>
+                <datalist id="customer-names">
+                    {customerSuggestions.map((name, i) => (
+                        <option key={i} value={name} />
+                    ))}
+                </datalist>
             </form>
 
             <style>{`
@@ -318,23 +338,3 @@ const AddAccount = () => {
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    color: var(--primary);
-                    font-weight: 700;
-                }
-
-                .success-icon-container {
-                    background: #f0fdf4;
-                    width: 120px;
-                    height: 120px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    border-radius: 50%;
-                    margin: 0 auto;
-                }
-            `}</style>
-        </div>
-    );
-};
-
-export default AddAccount;
