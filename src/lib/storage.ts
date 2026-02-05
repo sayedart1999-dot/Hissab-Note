@@ -167,11 +167,20 @@ export const Storage = {
         const dbDescription = cleanDescription + ':::' + meta;
 
         // Exclude UI-only fields from payload, use modified description
-        const { quantity, rate, mobile, description, ...dbData } = account;
+        const dbData = {
+            id: account.id,
+            name: account.name,
+            total: account.total,
+            paid: account.paid,
+            due: account.due,
+            date: account.date,
+            description: dbDescription,
+            user_id: user.id
+        };
 
         const { error } = await supabase
             .from('accounts')
-            .upsert({ ...dbData, description: dbDescription, user_id: user.id });
+            .upsert(dbData);
         if (error) throw error;
     },
     async deleteAccount(id: string) {

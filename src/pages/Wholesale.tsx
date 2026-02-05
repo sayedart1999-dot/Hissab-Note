@@ -72,10 +72,15 @@ const Wholesale = () => {
         const customerEntries = entries.filter(e => e.customerName.trim() === name.trim());
         if (customerEntries.length === 0) return 0;
 
-        // Sort to get the absolute latest entry
+        // Sort to get the absolute latest entry using same logic as groupedSummaries
         const sorted = [...customerEntries].sort((a, b) => {
             const dateCompare = b.date.localeCompare(a.date);
             if (dateCompare !== 0) return dateCompare;
+
+            const tsA = a.timestamp || 0;
+            const tsB = b.timestamp || 0;
+            if (tsA !== tsB) return tsB - tsA;
+
             return b.id.localeCompare(a.id);
         });
 
@@ -90,7 +95,12 @@ const Wholesale = () => {
         const sorted = [...customerEntries].sort((a, b) => {
             const dateCompare = b.date.localeCompare(a.date);
             if (dateCompare !== 0) return dateCompare;
-            return (b.timestamp || 0) - (a.timestamp || 0);
+
+            const tsA = a.timestamp || 0;
+            const tsB = b.timestamp || 0;
+            if (tsA !== tsB) return tsB - tsA;
+
+            return b.id.localeCompare(a.id);
         });
 
         return sorted[0].mobile || '';
@@ -315,8 +325,8 @@ const Wholesale = () => {
                     <form onSubmit={handleSave} className="wholesale-modern-form">
                         {/* Section 1: Customer Information */}
                         <div className="form-section">
-                            <div className="grid grid-cols-12 gap-6">
-                                <div className="col-span-12 md:col-span-5 input-group">
+                            <div className="customer-basic-row">
+                                <div className="input-group">
                                     <label className="label-light">কাস্টমারের নাম</label>
                                     <input
                                         type="text"
@@ -341,7 +351,7 @@ const Wholesale = () => {
                                         ))}
                                     </datalist>
                                 </div>
-                                <div className="col-span-12 md:col-span-4 input-group">
+                                <div className="input-group">
                                     <label className="label-light">মোবাইল নম্বর</label>
                                     <input
                                         type="text"
@@ -351,7 +361,7 @@ const Wholesale = () => {
                                         onChange={e => setFormData({ ...formData, mobile: e.target.value })}
                                     />
                                 </div>
-                                <div className="col-span-12 md:col-span-3 input-group">
+                                <div className="input-group">
                                     <label className="label-light">পূর্বের বাকি</label>
                                     <div className="input-readonly">
                                         <span className="currency-symbol">৳</span> {formData.previousDue.toLocaleString()}
@@ -420,7 +430,7 @@ const Wholesale = () => {
                                         value={currentTotalNew || ''}
                                         onChange={e => setFormData({ ...formData, newAmount: Number(e.target.value) })}
                                         readOnly={formItems.length > 0}
-                                        required
+                                        placeholder="0.00"
                                     />
                                     {formItems.length > 0 && <span className="helper-text">* আইটেম লিস্ট থেকে হিসাব করা</span>}
                                 </div>
@@ -432,11 +442,10 @@ const Wholesale = () => {
                                         placeholder="0.00"
                                         value={formData.paidNow || ''}
                                         onChange={e => setFormData({ ...formData, paidNow: Number(e.target.value) })}
-                                        required
                                     />
                                 </div>
-                                <div className="input-group due-field-compact">
-                                    <label className="label-light text-right">বর্তমান পাওনা</label>
+                                <div className="input-group">
+                                    <label className="label-light">বর্তমান পাওনা</label>
                                     <div className="input-total-due">
                                         <span className="currency-symbol">৳</span> {((formData.previousDue + currentTotalNew) - formData.paidNow).toLocaleString()}
                                     </div>
@@ -676,6 +685,19 @@ const Wholesale = () => {
             <style>{`
                 .wholesale-page { width: 100%; margin: 0 auto; padding-bottom: 3rem; font-family: 'Hind Siliguri', sans-serif; }
                 
+                .customer-basic-row {
+                    display: grid;
+                    grid-template-columns: 2fr 2fr 1fr;
+                    gap: 1.5rem;
+                }
+
+                @media (max-width: 768px) {
+                    .customer-basic-row {
+                        grid-template-columns: 1fr;
+                        gap: 1rem;
+                    }
+                }
+
                 /* ... existing styles ... */
                 /* Typography & Colors */
                 .amount-primary { color: var(--primary); }
@@ -805,20 +827,30 @@ const Wholesale = () => {
                 .form-section.no-border { border-bottom: none; margin-bottom: 0.5rem; padding-bottom: 0; }
                 
                 .section-title { font-size: 0.875rem; font-weight: 700; color: #475569; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em; }
-                .billing-grid { display: grid; grid-template-columns: 1fr 1fr 0.75fr; gap: 1.5rem; align-items: flex-start; }
-                .due-field-compact { justify-self: end; width: 100%; max-width: 220px; }
-                .text-right { text-align: right; }
+                 .billing-grid { 
+                    display: grid; 
+                    grid-template-columns: 2fr 2fr 1fr; 
+                    gap: 1.5rem; 
+                    align-items: flex-start; 
+                }
+                
+                @media (max-width: 768px) {
+                    .billing-grid {
+                        grid-template-columns: 1fr;
+                        gap: 1rem;
+                    }
+                }
                 
                 .item-row-modern-container { margin-bottom: 0.5rem; display: flex; flex-direction: column; gap: 0.15rem; }
                 .item-row-date { font-size: 0.65rem; color: var(--text-muted); font-weight: 500; padding-left: 0.25rem; }
                 
                 .input-readonly { 
                     padding: 0.625rem 0.875rem; 
-                    background: #f1f5f9; 
-                    border: 1px solid #e2e8f0; 
+                    background: #fff1f2; 
+                    border: 1.5px solid #fecaca; 
                     border-radius: var(--radius); 
-                    font-weight: 700; 
-                    color: #64748b; 
+                    font-weight: 800; 
+                    color: var(--danger); 
                     cursor: not-allowed; 
                     display: flex; 
                     align-items: center; 
