@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Storage, type WholesaleEntry } from '../lib/storage';
-import { Plus, Truck, Edit2, Trash2, X, Minus, Calculator, Eye } from 'lucide-react';
+import { Plus, Truck, Edit2, Trash2, X, Minus, Calculator, Eye, AlertTriangle, Printer } from 'lucide-react';
 
 const Wholesale = () => {
     const [entries, setEntries] = useState<WholesaleEntry[]>([]);
@@ -8,10 +8,47 @@ const Wholesale = () => {
     const [showAddForm, setShowAddForm] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [expandedCustomer, setExpandedCustomer] = useState<string | null>(null);
+    const [showDueOnly, setShowDueOnly] = useState(false);
+    const [previewEntry, setPreviewEntry] = useState<WholesaleEntry | null>(null);
+    const [companyInfo, setCompanyInfo] = useState({
+        name: 'মেসার্স ভাই ভাই এন্টারপ্রাইজ',
+        proprietor: 'প্রোপাইটর: মোঃ রফিকুল ইসলাম',
+        mobile: 'মোবাইল: ০১৭০০-০০০০০০',
+        address: 'নিউ মার্কেট, ঢাকা'
+    });
 
     useEffect(() => {
         fetchEntries();
+        const savedInfo = localStorage.getItem('hissab_company_info');
+        if (savedInfo) {
+            setCompanyInfo(JSON.parse(savedInfo));
+        }
     }, []);
+
+    const updateCompanyInfo = (field: keyof typeof companyInfo, value: string) => {
+        const newInfo = { ...companyInfo, [field]: value };
+        setCompanyInfo(newInfo);
+        localStorage.setItem('hissab_company_info', JSON.stringify(newInfo));
+    };
+
+    const [formData, setFormData] = useState<{
+        customerName: string;
+        mobile: string;
+        previousDue: number;
+        newAmount: number;
+        paidNow: number;
+        description: string;
+        note: string;
+    }>({
+        customerName: '',
+        mobile: '',
+        previousDue: 0,
+        newAmount: 0,
+        paidNow: 0,
+        description: '',
+        note: ''
+    });
+    const [formItems, setFormItems] = useState<{ name: string; qty: number; rate: number }[]>([]);
 
     const fetchEntries = async () => {
         try {
@@ -45,17 +82,21 @@ const Wholesale = () => {
         return sorted[0].remainingDue;
     };
 
-    // Form State
-    const [formData, setFormData] = useState({
-        customerName: '',
-        previousDue: 0,
-        newAmount: 0,
-        paidNow: 0,
-        description: '',
-        note: ''
-    });
-    const [formItems, setFormItems] = useState<{ id?: string; name: string; qty: number; rate: number }[]>([]);
+    const findLatestMobile = (name: string) => {
+        if (!name) return '';
+        const customerEntries = entries.filter(e => e.customerName.trim() === name.trim());
+        if (customerEntries.length === 0) return '';
 
+        const sorted = [...customerEntries].sort((a, b) => {
+            const dateCompare = b.date.localeCompare(a.date);
+            if (dateCompare !== 0) return dateCompare;
+            return (b.timestamp || 0) - (a.timestamp || 0);
+        });
+
+        return sorted[0].mobile || '';
+    };
+
+    // Grouping summaries logic
     const groupedSummaries = useMemo(() => {
         const groups: Record<string, WholesaleEntry[]> = {};
         entries.forEach(entry => {
@@ -67,7 +108,13 @@ const Wholesale = () => {
             const customerEntries = groups[name].sort((a, b) => {
                 const dateCompare = b.date.localeCompare(a.date);
                 if (dateCompare !== 0) return dateCompare;
-                // If dates are same, sort by ID (timestamp) to get the actual latest
+
+                // If dates are same, sort by timestamp (newest first)
+                const tsA = a.timestamp || 0;
+                const tsB = b.timestamp || 0;
+                if (tsA !== tsB) return tsB - tsA;
+
+                // Fallback to ID
                 return b.id.localeCompare(a.id);
             });
             const oldestToNewest = [...customerEntries].reverse();
@@ -86,6 +133,10 @@ const Wholesale = () => {
             };
         });
     }, [entries]);
+
+    const visibleSummaries = useMemo(() => {
+        return groupedSummaries.filter(item => !showDueOnly || item.summary.currentDue > 0);
+    }, [groupedSummaries, showDueOnly]);
 
     const stats = useMemo(() => {
         const outstanding = groupedSummaries.reduce((sum, item) => sum + item.summary.currentDue, 0);
@@ -122,7 +173,7 @@ const Wholesale = () => {
 
             setShowAddForm(false);
             setEditingId(null);
-            setFormData({ customerName: '', previousDue: 0, newAmount: 0, paidNow: 0, description: '', note: '' });
+            setFormData({ customerName: '', mobile: '', previousDue: 0, newAmount: 0, paidNow: 0, description: '', note: '' });
             setFormItems([]);
         } catch (error: any) {
             console.error('Error saving wholesale entry:', error);
@@ -135,6 +186,7 @@ const Wholesale = () => {
     const handleEdit = (entry: WholesaleEntry) => {
         setFormData({
             customerName: entry.customerName,
+            mobile: entry.mobile || '',
             previousDue: entry.previousDue,
             newAmount: entry.newAmount,
             paidNow: entry.paidNow,
@@ -180,16 +232,38 @@ const Wholesale = () => {
                     </h1>
                     <p className="text-muted mt-1">পাইকারী কাস্টমারদের লেনদেন ব্যবস্থাপনা</p>
                 </div>
-                {!showAddForm && (
-                    <button className="btn btn-primary" onClick={() => {
-                        setShowAddForm(true);
-                        setEditingId(null);
-                        setFormData({ customerName: '', previousDue: 0, newAmount: 0, paidNow: 0, description: '', note: '' });
-                        setFormItems([]);
-                    }}>
-                        <Plus size={20} /> নতুন এন্ট্রি যোগ করুন
+                <div className="flex items-center gap-3">
+                    <button
+                        className={`btn ${showDueOnly ? 'btn-primary' : 'btn-white'}`}
+                        onClick={() => setShowDueOnly(!showDueOnly)}
+                        style={{
+                            height: '42px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            padding: '0 1.25rem',
+                            fontWeight: 600,
+                            borderRadius: '0.5rem',
+                            border: showDueOnly ? 'none' : '1px solid var(--border)',
+                            backgroundColor: showDueOnly ? 'var(--primary)' : 'white',
+                            color: showDueOnly ? 'white' : 'var(--secondary)',
+                            transition: 'all 0.2s'
+                        }}
+                    >
+                        <AlertTriangle size={18} className={showDueOnly ? 'text-white' : 'text-orange-500'} />
+                        {showDueOnly ? 'সব হিসাব' : 'সব বাকি হিসাব'}
                     </button>
-                )}
+                    {!showAddForm && (
+                        <button className="btn btn-primary" onClick={() => {
+                            setShowAddForm(true);
+                            setEditingId(null);
+                            setFormData({ customerName: '', mobile: '', previousDue: 0, newAmount: 0, paidNow: 0, description: '', note: '' });
+                            setFormItems([]);
+                        }}>
+                            <Plus size={20} /> নতুন এন্ট্রি যোগ করুন
+                        </button>
+                    )}
+                </div>
             </div>
 
             {/* Stats */}
@@ -241,8 +315,8 @@ const Wholesale = () => {
                     <form onSubmit={handleSave} className="wholesale-modern-form">
                         {/* Section 1: Customer Information */}
                         <div className="form-section">
-                            <div className="grid grid-cols-2 gap-6">
-                                <div className="input-group">
+                            <div className="grid grid-cols-12 gap-6">
+                                <div className="col-span-12 md:col-span-5 input-group">
                                     <label className="label-light">কাস্টমারের নাম</label>
                                     <input
                                         type="text"
@@ -252,7 +326,12 @@ const Wholesale = () => {
                                         value={formData.customerName}
                                         onChange={e => {
                                             const name = e.target.value;
-                                            setFormData({ ...formData, customerName: name, previousDue: findPreviousDue(name) });
+                                            setFormData({
+                                                ...formData,
+                                                customerName: name,
+                                                previousDue: findPreviousDue(name),
+                                                mobile: findLatestMobile(name) || formData.mobile
+                                            });
                                         }}
                                         required
                                     />
@@ -262,7 +341,17 @@ const Wholesale = () => {
                                         ))}
                                     </datalist>
                                 </div>
-                                <div className="input-group">
+                                <div className="col-span-12 md:col-span-4 input-group">
+                                    <label className="label-light">মোবাইল নম্বর</label>
+                                    <input
+                                        type="text"
+                                        className="input"
+                                        placeholder="মোবাইল নং লিখুন..."
+                                        value={formData.mobile}
+                                        onChange={e => setFormData({ ...formData, mobile: e.target.value })}
+                                    />
+                                </div>
+                                <div className="col-span-12 md:col-span-3 input-group">
                                     <label className="label-light">পূর্বের বাকি</label>
                                     <div className="input-readonly">
                                         <span className="currency-symbol">৳</span> {formData.previousDue.toLocaleString()}
@@ -304,10 +393,10 @@ const Wholesale = () => {
                                                 <input type="text" className="input input-sm" placeholder="আইটেম..." value={item.name} onChange={e => updateItem(idx, 'name', e.target.value)} />
                                             </div>
                                             <div className="col-span-2">
-                                                <input type="number" className="input input-sm text-center" placeholder="0" value={item.qty} onChange={e => updateItem(idx, 'qty', Number(e.target.value))} />
+                                                <input type="number" className="input input-sm text-center" placeholder="0" value={item.qty || ''} onChange={e => updateItem(idx, 'qty', Number(e.target.value))} />
                                             </div>
                                             <div className="col-span-3">
-                                                <input type="number" className="input input-sm text-center" placeholder="0.00" value={item.rate} onChange={e => updateItem(idx, 'rate', Number(e.target.value))} />
+                                                <input type="number" className="input input-sm text-center" placeholder="0.00" value={item.rate || ''} onChange={e => updateItem(idx, 'rate', Number(e.target.value))} />
                                             </div>
                                             <div className="col-span-1 flex justify-center items-center">
                                                 <button type="button" className="btn-remove-item" onClick={() => removeItem(idx)} title="মুছে ফেলুন">
@@ -328,7 +417,7 @@ const Wholesale = () => {
                                     <input
                                         type="number"
                                         className={`input input-bold ${formItems.length > 0 ? 'input-readonly-style' : 'input-active'}`}
-                                        value={currentTotalNew}
+                                        value={currentTotalNew || ''}
                                         onChange={e => setFormData({ ...formData, newAmount: Number(e.target.value) })}
                                         readOnly={formItems.length > 0}
                                         required
@@ -341,7 +430,7 @@ const Wholesale = () => {
                                         type="number"
                                         className="input input-bold input-success-focus"
                                         placeholder="0.00"
-                                        value={formData.paidNow}
+                                        value={formData.paidNow || ''}
                                         onChange={e => setFormData({ ...formData, paidNow: Number(e.target.value) })}
                                         required
                                     />
@@ -372,13 +461,13 @@ const Wholesale = () => {
 
             {/* List Section */}
             <div className="wholesale-list">
-                {groupedSummaries.length === 0 ? (
+                {visibleSummaries.length === 0 ? (
                     <div className="card empty-state-card">
                         <Truck size={40} className="empty-icon" />
-                        <p>এখনো কোন এন্ট্রি নেই。 নতুন এন্ট্রি যোগ করতে উপরের বাটনে ক্লিক করুন。</p>
+                        <p>{showDueOnly ? 'কোন বাকি হিসাব পাওয়া যায়নি।' : 'এখনো কোন এন্ট্রি নেই। নতুন এন্ট্রি যোগ করতে উপরের বাটনে ক্লিক করুন।'}</p>
                     </div>
                 ) : (
-                    groupedSummaries.map(({ customerName, allEntries, summary }) => (
+                    visibleSummaries.map(({ customerName, allEntries, summary }) => (
                         <div key={customerName} className="card customer-summary-card">
                             <div className="customer-card-header">
                                 <h4 className="customer-name">
@@ -409,6 +498,7 @@ const Wholesale = () => {
                                             <thead>
                                                 <tr>
                                                     <th>তারিখ</th>
+                                                    <th>মোবাইল</th>
                                                     <th>পূর্বের বাকি</th>
                                                     <th>নতুন মাল</th>
                                                     <th>জমা</th>
@@ -420,12 +510,16 @@ const Wholesale = () => {
                                                 {allEntries.map((entry) => (
                                                     <tr key={entry.id}>
                                                         <td className="date-cell">{entry.date}</td>
+                                                        <td>{entry.mobile || '-'}</td>
                                                         <td>৳ {entry.previousDue.toLocaleString()}</td>
                                                         <td className="amount-new">৳ {entry.newAmount.toLocaleString()}</td>
                                                         <td className="amount-paid">৳ {entry.paidNow.toLocaleString()}</td>
                                                         <td className="amount-due">৳ {entry.remainingDue.toLocaleString()}</td>
                                                         <td className="actions-cell">
                                                             <div className="flex gap-2 justify-center">
+                                                                <button className="action-btn-sm" onClick={() => setPreviewEntry(entry)} title="মেমো দেখুন">
+                                                                    <Printer size={12} />
+                                                                </button>
                                                                 <button className="action-btn-sm" onClick={() => handleEdit(entry)} title="এডিট">
                                                                     <Edit2 size={12} />
                                                                 </button>
@@ -446,9 +540,143 @@ const Wholesale = () => {
                 )}
             </div>
 
+            {/* Print/Preview Modal */}
+            {previewEntry && (
+                <div className="modal-overlay">
+                    <div className="invoice-modal card">
+                        <div className="invoice-header-actions no-print">
+                            <h3 className="text-lg font-bold">মেমো প্রিভিউ</h3>
+                            <div className="flex gap-2">
+                                <button className="btn btn-primary btn-sm" onClick={() => window.print()}>
+                                    <Printer size={16} /> প্রিন্ট করুন
+                                </button>
+                                <button className="btn-close-subtle" onClick={() => setPreviewEntry(null)}>
+                                    <X size={20} />
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="invoice-content" id="printable-area">
+                            {/* Invoice Header */}
+                            <div className="inv-header">
+                                <div className="company-info">
+                                    <input
+                                        className="company-input-name"
+                                        value={companyInfo.name}
+                                        onChange={(e) => updateCompanyInfo('name', e.target.value)}
+                                    />
+                                    <input
+                                        className="company-input-sub"
+                                        value={companyInfo.proprietor}
+                                        onChange={(e) => updateCompanyInfo('proprietor', e.target.value)}
+                                    />
+                                    <input
+                                        className="company-input-sub"
+                                        value={companyInfo.mobile}
+                                        onChange={(e) => updateCompanyInfo('mobile', e.target.value)}
+                                    />
+                                    <input
+                                        className="company-input-address"
+                                        value={companyInfo.address}
+                                        onChange={(e) => updateCompanyInfo('address', e.target.value)}
+                                    />
+                                </div>
+                                <div className="inv-meta">
+                                    <div className="meta-row">
+                                        <span className="meta-label">তারিখ:</span>
+                                        <span className="meta-value">{previewEntry.date}</span>
+                                    </div>
+                                    <div className="meta-row">
+                                        <span className="meta-label">মেমো নং:</span>
+                                        <span className="meta-value">#{previewEntry.id.slice(0, 8).toUpperCase()}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Customer Info */}
+                            <div className="inv-customer flex justify-between items-center">
+                                <div className="flex items-center">
+                                    <span className="text-muted mr-2">নাম:</span>
+                                    <strong className="text-lg">{previewEntry.customerName}</strong>
+                                </div>
+                                <div className="flex items-center">
+                                    <span style={{ color: '#64748b', marginRight: '0.5rem' }}>মোবাইল:</span>
+                                    <strong>{previewEntry.mobile || '____________________'}</strong>
+                                </div>
+                            </div>
+
+                            {/* Items Table */}
+                            <table className="inv-table">
+                                <thead>
+                                    <tr>
+                                        <th style={{ width: '5%', textAlign: 'center' }}>নং</th>
+                                        <th style={{ width: '50%', textAlign: 'left' }}>বিবরণ</th>
+                                        <th style={{ width: '15%', textAlign: 'right' }}>পরিমাণ</th>
+                                        <th style={{ width: '15%', textAlign: 'right' }}>দর</th>
+                                        <th style={{ width: '15%', textAlign: 'right' }}>মোট</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {(previewEntry.items || []).length > 0 ? (
+                                        previewEntry.items!.map((item, i) => (
+                                            <tr key={i}>
+                                                <td style={{ textAlign: 'center' }}>{i + 1}</td>
+                                                <td style={{ textAlign: 'left' }}>{item.name}</td>
+                                                <td style={{ textAlign: 'right' }}>{item.qty}</td>
+                                                <td style={{ textAlign: 'right' }}>{item.rate}</td>
+                                                <td style={{ textAlign: 'right' }}>{(item.qty * item.rate).toLocaleString()}</td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan={5} className="text-center py-4 text-muted">কোন মালের বিবরণ নেই - সরাসরি মোট টাকার হিসাব</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+
+                            {/* Totals */}
+                            <div className="inv-footer">
+                                <div className="inv-notes">
+                                    <p><strong>নোট:</strong> {previewEntry.note || 'ধন্যবাদ, আবার আসবেন।'}</p>
+                                </div>
+                                <div className="inv-totals">
+                                    <div className="total-row">
+                                        <span>পূর্বের বাকি:</span>
+                                        <span>{previewEntry.previousDue.toLocaleString()}</span>
+                                    </div>
+                                    <div className="total-row">
+                                        <span>নতুন মাল:</span>
+                                        <span>{previewEntry.newAmount.toLocaleString()}</span>
+                                    </div>
+                                    <div className="total-row highlight">
+                                        <span>মোট পাওনা:</span>
+                                        <span>{(previewEntry.previousDue + previewEntry.newAmount).toLocaleString()}</span>
+                                    </div>
+                                    <div className="total-row paid">
+                                        <span>জমা:</span>
+                                        <span>(-) {previewEntry.paidNow.toLocaleString()}</span>
+                                    </div>
+                                    <div className="total-row due">
+                                        <span>বর্তমান বাকি:</span>
+                                        <span>{previewEntry.remainingDue.toLocaleString()}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="inv-signatures">
+                                <div className="sig-box">ক্রেতার স্বাক্ষর</div>
+                                <div className="sig-box">বিক্রেতার স্বাক্ষর</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <style>{`
                 .wholesale-page { width: 100%; margin: 0 auto; padding-bottom: 3rem; font-family: 'Hind Siliguri', sans-serif; }
                 
+                /* ... existing styles ... */
                 /* Typography & Colors */
                 .amount-primary { color: var(--primary); }
                 .amount-success { color: var(--success); }
@@ -457,6 +685,99 @@ const Wholesale = () => {
                 .label-xs { font-size: 0.75rem; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.025em; }
                 .input-bold { font-weight: 700; }
                 
+                /* Invoice Modal Styles */
+                .invoice-modal { width: 800px; max-width: 95%; max-height: 90vh; overflow-y: auto; padding: 0; background: white; }
+                .invoice-header-actions { padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: #f8fafc; }
+                .invoice-content { padding: 3rem; color: #1e293b; }
+                
+                .inv-header { text-align: center; margin-bottom: 2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 1.5rem; }
+                
+                /* Editable Company Info Styles */
+                .company-info { display: flex; flex-direction: column; align-items: center; }
+                .company-input-name { 
+                    font-family: inherit;
+                    font-size: 1.75rem; 
+                    font-weight: 700; 
+                    color: var(--primary); 
+                    text-align: center; 
+                    border: none; 
+                    outline: none; 
+                    background: transparent; 
+                    width: 100%; 
+                    margin-bottom: 0.25rem; 
+                    padding: 0.25rem;
+                }
+                .company-input-sub { 
+                    font-family: inherit;
+                    font-size: 0.9rem; 
+                    color: #475569; 
+                    text-align: center; 
+                    border: none; 
+                    outline: none; 
+                    background: transparent; 
+                    width: 100%; 
+                    margin: 0.1rem 0;
+                    padding: 0.15rem;
+                }
+                .company-input-address { 
+                    font-family: inherit;
+                    font-size: 0.9rem; 
+                    font-weight: 500; 
+                    color: #475569; 
+                    text-align: center; 
+                    border: none; 
+                    outline: none; 
+                    background: transparent; 
+                    width: 100%; 
+                    margin-top: 0.1rem;
+                    padding: 0.15rem;
+                }
+                .company-input-name:focus, 
+                .company-input-sub:focus, 
+                .company-input-address:focus { 
+                    background: rgba(0,0,0,0.02); 
+                    border-radius: 4px; 
+                }
+                
+                .inv-meta { display: flex; justify-content: space-between; margin-top: 1.5rem; font-size: 0.9rem; }
+                .meta-row { display: flex; gap: 0.5rem; }
+                .meta-label { color: #64748b; }
+                .meta-value { font-weight: 700; }
+                
+                .inv-customer { background: #f1f5f9; padding: 0.75rem 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem; }
+                
+                .inv-table { width: 100%; border-collapse: collapse; margin-bottom: 2rem; }
+                .inv-table th { background: #f8fafc; padding: 0.75rem; text-align: left; border-bottom: 2px solid #e2e8f0; font-size: 0.85rem; text-transform: uppercase; color: #64748b; }
+                .inv-table td { padding: 0.75rem; border-bottom: 1px solid #e2e8f0; }
+                .text-right { text-align: right; }
+                .text-center { text-align: center; }
+                
+                .inv-footer { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4rem; }
+                .inv-notes { flex: 1; padding-right: 2rem; font-size: 0.85rem; color: #64748b; }
+                .inv-totals { width: 250px; }
+                .total-row { display: flex; justify-content: space-between; padding: 0.35rem 0; font-size: 0.9rem; }
+                .total-row.highlight { border-top: 1px solid #e2e8f0; margin-top: 0.5rem; padding-top: 0.5rem; font-weight: 700; }
+                .total-row.paid { color: var(--success); font-weight: 600; }
+                .total-row.due { border-top: 2px solid #000; margin-top: 0.5rem; padding-top: 0.5rem; font-weight: 800; font-size: 1.1rem; color: var(--danger); }
+                
+                .inv-signatures { display: flex; justify-content: space-between; margin-top: 3rem; }
+                .sig-box { border-top: 1px solid #94a3b8; padding-top: 0.5rem; width: 150px; text-align: center; font-size: 0.85rem; color: #64748b; }
+
+                /* Print Media Query */
+                @media print {
+                    body * { visibility: hidden; }
+                    .modal-overlay, .modal-overlay * { visibility: visible; }
+                    .modal-overlay { position: absolute; left: 0; top: 0; width: 100%; height: 100%; padding: 0; background: white; align-items: flex-start; }
+                    .invoice-modal { width: 100%; max-width: 100%; box-shadow: none; border: none; }
+                    .no-print { display: none !important; }
+                    .invoice-content { padding: 0; width: 100%; }
+                    /* Colors for print */
+                    .amount-danger { color: #000 !important; }
+                    .total-row.due { color: #000 !important; }
+                    .total-row.paid { color: #000 !important; }
+                    .company-info h1 { color: #000 !important; }
+                }
+
                 /* Layout Components */
                 /* Dashboard-style Summary Cards */
                 .summary-card { padding: 1.5rem; }

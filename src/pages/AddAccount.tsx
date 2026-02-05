@@ -6,10 +6,12 @@ import { Trash2, Save, CheckCircle, PlusCircle } from 'lucide-react';
 interface AccountRow {
     id: string;
     name: string;
+    mobile: string;
     description: string;
     quantity: number;
     rate: number;
     paid: number;
+    timestamp?: number;
 }
 
 const AddAccount = () => {
@@ -32,11 +34,11 @@ const AddAccount = () => {
     }, []);
 
     const [rows, setRows] = useState<AccountRow[]>(() => [
-        { id: Date.now().toString(), name: '', description: '', quantity: 0, rate: 0, paid: 0 }
+        { id: Date.now().toString(), name: '', mobile: '', description: '', quantity: 0, rate: 0, paid: 0 }
     ]);
 
     const addRow = () => {
-        setRows([...rows, { id: Date.now().toString(), name: '', description: '', quantity: 0, rate: 0, paid: 0 }]);
+        setRows([...rows, { id: Date.now().toString(), name: '', mobile: '', description: '', quantity: 0, rate: 0, paid: 0 }]);
     };
 
     const removeRow = (id: string) => {
@@ -65,16 +67,22 @@ const AddAccount = () => {
 
         try {
             setLoading(true);
-            const savePromises = validRows.map(row => {
+            const baseTimestamp = Date.now();
+            const savePromises = validRows.map((row, index) => {
                 const total = row.quantity * row.rate;
+
                 return Storage.saveAccount({
                     id: crypto.randomUUID(),
                     name: row.name,
-                    description: row.description,
+                    description: row.description || '',
                     total: total,
                     paid: row.paid,
                     due: total - row.paid,
-                    date: date
+                    date: date,
+                    quantity: row.quantity,
+                    rate: row.rate,
+                    mobile: row.mobile,
+                    timestamp: baseTimestamp + index // Ensure sequential order
                 });
             });
 
@@ -135,6 +143,7 @@ const AddAccount = () => {
                         <div className="header-col col-sn">#</div>
                         <div className="header-col col-name">কাস্টমারের নাম</div>
                         <div className="header-col col-desc">কাজের বিবরণ</div>
+                        <div className="header-col col-mobile">মোবাইল নং</div>
                         <div className="header-col col-qty">পরিমাণ</div>
                         <div className="header-col col-rate">দর</div>
                         <div className="header-col col-paid">জমা</div>
@@ -169,6 +178,15 @@ const AddAccount = () => {
                                             placeholder="বিবরণ"
                                             value={row.description}
                                             onChange={(e) => updateRow(row.id, 'description', e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="row-col col-mobile">
+                                        <input
+                                            type="text"
+                                            className="row-input"
+                                            placeholder="মোবাইল"
+                                            value={row.mobile}
+                                            onChange={(e) => updateRow(row.id, 'mobile', e.target.value)}
                                         />
                                     </div>
                                     <div className="row-col col-qty">
@@ -270,7 +288,7 @@ const AddAccount = () => {
 
                 .details-header {
                     display: grid;
-                    grid-template-columns: 50px 1.5fr 1.5fr 80px 100px 100px 1.2fr 60px;
+                    grid-template-columns: 50px 1.2fr 1.2fr 1.1fr 80px 100px 100px 1.2fr 60px;
                     padding: 0.75rem 1.5rem;
                     font-weight: 700;
                     color: var(--secondary);
@@ -278,7 +296,7 @@ const AddAccount = () => {
 
                 .detail-row {
                     display: grid;
-                    grid-template-columns: 50px 1.5fr 1.5fr 80px 100px 100px 1.2fr 60px;
+                    grid-template-columns: 50px 1.2fr 1.2fr 1.1fr 80px 100px 100px 1.2fr 60px;
                     padding: 1rem 1.5rem;
                     gap: 0.75rem;
                     align-items: center;

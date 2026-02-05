@@ -62,6 +62,8 @@ export interface Account {
     date: string;
     quantity?: number;
     rate?: number;
+    mobile?: string;
+    timestamp?: number;
 }
 
 export interface Task {
@@ -81,6 +83,7 @@ export interface WholesaleEntry {
     id: string;
     user_id?: string;
     customerName: string;
+    mobile?: string;
     previousDue: number;
     newAmount: number;
     paidNow: number;
@@ -89,6 +92,7 @@ export interface WholesaleEntry {
     description?: string;
     items?: { name: string; qty: number; rate: number }[];
     note?: string;
+    timestamp?: number;
 }
 
 const STORAGE_KEYS = {
@@ -116,6 +120,8 @@ export const Storage = {
             let desc = item.description || '';
 
             // Parse metadata from description (Separator: :::)
+            let mobile = '';
+            let timestamp = 0;
             if (desc && desc.includes(':::')) {
                 const parts = desc.split(':::');
                 if (parts.length === 2) {
@@ -123,6 +129,8 @@ export const Storage = {
                         const meta = JSON.parse(parts[1]);
                         quantity = meta.q || 0;
                         rate = meta.r || 0;
+                        mobile = meta.m || '';
+                        timestamp = meta.ts || 0;
                         desc = parts[0];
                     } catch (e) {
                         // Keep original description if parse fails
@@ -135,6 +143,8 @@ export const Storage = {
                 description: desc,
                 quantity,
                 rate,
+                mobile,
+                timestamp,
                 total: Number(item.total),
                 paid: Number(item.paid),
                 due: Number(item.due)
@@ -146,13 +156,18 @@ export const Storage = {
         if (!user) throw new Error('Not authenticated');
 
         // Store metadata in description field to avoid schema changes
-        const meta = JSON.stringify({ q: account.quantity, r: account.rate });
+        const meta = JSON.stringify({
+            q: account.quantity,
+            r: account.rate,
+            m: account.mobile,
+            ts: account.timestamp || Date.now()
+        });
         // Ensure we don't double-append if editing an existing padded description
         const cleanDescription = (account.description || '').split(':::')[0];
         const dbDescription = cleanDescription + ':::' + meta;
 
         // Exclude UI-only fields from payload, use modified description
-        const { quantity, rate, description, ...dbData } = account;
+        const { quantity, rate, mobile, description, ...dbData } = account;
 
         const { error } = await supabase
             .from('accounts')
@@ -195,6 +210,7 @@ export const Storage = {
     },
 
     // Wholesale
+    // Wholesale
     async getWholesale(): Promise<WholesaleEntry[]> {
         const { data, error } = await supabase
             .from('wholesale_entries')
@@ -202,23 +218,54 @@ export const Storage = {
             .order('date', { ascending: false });
         if (error) throw error;
 
-        return (data || []).map(entry => ({
-            id: entry.id,
-            user_id: entry.user_id,
-            customerName: entry.customer_name,
-            previousDue: Number(entry.previous_due) || 0,
-            newAmount: Number(entry.new_amount) || 0,
-            paidNow: Number(entry.paid_now) || 0,
-            remainingDue: Number(entry.remaining_due) || 0,
-            date: entry.date,
-            description: entry.description,
-            items: entry.items,
-            note: entry.note
-        }));
+        return (data || []).map(entry => {
+            let timestamp = 0;
+            let desc = entry.description || '';
+
+            // Parse metadata (Separator: :::)
+            let mobile = '';
+            if (desc && desc.includes(':::')) {
+                const parts = desc.split(':::');
+                if (parts.length === 2) {
+                    try {
+                        const meta = JSON.parse(parts[1]);
+                        timestamp = meta.ts || 0;
+                        mobile = meta.m || '';
+                        desc = parts[0];
+                    } catch (e) {
+                        // Keep original description
+                    }
+                }
+            }
+
+            return {
+                id: entry.id,
+                user_id: entry.user_id,
+                customerName: entry.customer_name,
+                previousDue: Number(entry.previous_due) || 0,
+                newAmount: Number(entry.new_amount) || 0,
+                paidNow: Number(entry.paid_now) || 0,
+                remainingDue: Number(entry.remaining_due) || 0,
+                date: entry.date,
+                description: desc,
+                mobile,
+                items: entry.items,
+                note: entry.note,
+                timestamp // Add parsed timestamp
+            };
+        });
     },
     async saveWholesale(entry: WholesaleEntry) {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error('Not authenticated');
+
+        // Pack metadata
+        const meta = JSON.stringify({
+            ts: entry.timestamp || Date.now(),
+            m: entry.mobile || ''
+        });
+        const cleanDescription = (entry.description || '').split(':::')[0];
+        const dbDescription = cleanDescription + ':::' + meta;
 
         const { error } = await supabase
             .from('wholesale_entries')
@@ -231,7 +278,7 @@ export const Storage = {
                 paid_now: entry.paidNow,
                 remaining_due: entry.remainingDue,
                 date: entry.date,
-                description: entry.description,
+                description: dbDescription, // Save with metadata
                 items: entry.items,
                 note: entry.note
             });
