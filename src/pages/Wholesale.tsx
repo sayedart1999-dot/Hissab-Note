@@ -551,8 +551,8 @@ const Wholesale = () => {
 
             {/* Print/Preview Modal */}
             {previewEntry && (
-                <div className="modal-overlay">
-                    <div className="invoice-modal card">
+                <div className="modal-overlay" onClick={() => setPreviewEntry(null)}>
+                    <div className="invoice-modal card" onClick={e => e.stopPropagation()}>
                         <div className="invoice-header-actions no-print">
                             <h3 className="text-lg font-bold">মেমো প্রিভিউ</h3>
                             <div className="flex gap-2">
@@ -708,11 +708,39 @@ const Wholesale = () => {
                 .input-bold { font-weight: 700; }
                 
                 /* Invoice Modal Styles */
-                .invoice-modal { width: 800px; max-width: 95%; max-height: 90vh; overflow-y: auto; padding: 0; background: white; }
-                .invoice-header-actions { padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: #f8fafc; }
-                .invoice-content { padding: 3rem; color: #1e293b; }
+                .modal-overlay { 
+                    position: fixed; 
+                    top: 0; 
+                    left: 0; 
+                    width: 100%; 
+                    height: 100%; 
+                    background: rgba(0, 0, 0, 0.5); 
+                    display: flex; 
+                    justify-content: center; 
+                    align-items: center; 
+                    z-index: 9999;
+                    backdrop-filter: blur(4px);
+                }
+                .invoice-modal { 
+                    width: 148mm; 
+                    max-width: 95%; 
+                    max-height: 95vh; 
+                    overflow-y: auto; 
+                    padding: 0; 
+                    background: white; 
+                    border-radius: 1rem; 
+                    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+                    animation: modal-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+                    margin: 2rem;
+                }
+                @keyframes modal-pop {
+                    from { opacity: 0; transform: scale(0.95); }
+                    to { opacity: 1; transform: scale(1); }
+                }
+                .invoice-header-actions { padding: 0.75rem 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: #fafafa; position: sticky; top: 0; z-index: 10; }
+                .invoice-content { padding: 1.5rem 2rem; color: #1e293b; background: white; min-height: 210mm; }
                 
-                .inv-header { text-align: center; margin-bottom: 2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 1.5rem; }
+                .inv-header { text-align: center; margin-bottom: 1.5rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 1.25rem; }
                 
                 /* Editable Company Info Styles */
                 .company-info { display: flex; flex-direction: column; align-items: center; }
@@ -761,23 +789,24 @@ const Wholesale = () => {
                     border-radius: 4px; 
                 }
                 
-                .inv-meta { display: flex; justify-content: space-between; margin-top: 1.5rem; font-size: 0.9rem; }
+                .inv-meta { display: flex; justify-content: space-between; margin-top: 1.25rem; font-size: 0.9rem; padding: 0 0.5rem; }
                 .meta-row { display: flex; gap: 0.5rem; }
                 .meta-label { color: #64748b; }
                 .meta-value { font-weight: 700; }
                 
-                .inv-customer { background: #f1f5f9; padding: 0.75rem 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem; }
+                .inv-customer { background: #f1f5f9; padding: 1rem 1.25rem; border-radius: 0.5rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; }
                 
                 .inv-table { width: 100%; border-collapse: collapse; margin-bottom: 2rem; }
-                .inv-table th { background: #f8fafc; padding: 0.75rem; text-align: left; border-bottom: 2px solid #e2e8f0; font-size: 0.85rem; text-transform: uppercase; color: #64748b; }
-                .inv-table td { padding: 0.75rem; border-bottom: 1px solid #e2e8f0; }
+                .inv-table th { background: #f8fafc; padding: 0.875rem 0.75rem; text-align: left; border-bottom: 2px solid #e2e8f0; font-size: 0.85rem; text-transform: uppercase; color: #64748b; }
+                .inv-table td { padding: 0.875rem 0.75rem; border-bottom: 1px solid #e2e8f0; }
                 .text-right { text-align: right; }
                 .text-center { text-align: center; }
                 
-                .inv-footer { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4rem; }
-                .inv-notes { flex: 1; padding-right: 2rem; font-size: 0.85rem; color: #64748b; }
-                .inv-totals { width: 250px; }
-                .total-row { display: flex; justify-content: space-between; padding: 0.35rem 0; font-size: 0.9rem; }
+                .inv-footer { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 3.5rem; gap: 2rem; }
+                .inv-notes { flex: 1; padding-right: 1.5rem; font-size: 0.85rem; color: #64748b; line-height: 1.5; }
+                .inv-totals { width: 240px; }
+                .total-row { display: flex; justify-content: space-between; padding: 0.4rem 0; font-size: 0.9rem; align-items: center; }
+                .total-row span:last-child { min-width: 90px; text-align: right; font-weight: 700; }
                 .total-row.highlight { border-top: 1px solid #e2e8f0; margin-top: 0.5rem; padding-top: 0.5rem; font-weight: 700; }
                 .total-row.paid { color: var(--success); font-weight: 600; }
                 .total-row.due { border-top: 2px solid #000; margin-top: 0.5rem; padding-top: 0.5rem; font-weight: 800; font-size: 1.1rem; color: var(--danger); }
@@ -787,12 +816,13 @@ const Wholesale = () => {
 
                 /* Print Media Query */
                 @media print {
+                    @page { size: A5; margin: 5mm; }
                     body * { visibility: hidden; }
                     .modal-overlay, .modal-overlay * { visibility: visible; }
                     .modal-overlay { position: absolute; left: 0; top: 0; width: 100%; height: 100%; padding: 0; background: white; align-items: flex-start; }
-                    .invoice-modal { width: 100%; max-width: 100%; box-shadow: none; border: none; }
+                    .invoice-modal { width: 100%; max-width: 100%; box-shadow: none; border: none; margin: 0; }
                     .no-print { display: none !important; }
-                    .invoice-content { padding: 0; width: 100%; }
+                    .invoice-content { padding: 0; width: 100%; min-height: auto; }
                     /* Colors for print */
                     .amount-danger { color: #000 !important; }
                     .total-row.due { color: #000 !important; }

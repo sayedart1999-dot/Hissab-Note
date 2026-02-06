@@ -10,22 +10,26 @@ import {
   LogOut,
   Menu,
   X,
-  AlertCircle
+  AlertCircle,
+  Bell
 } from 'lucide-react';
 import { Storage } from '../../lib/storage';
 import { supabase } from '../../lib/supabase';
 import { AuthChangeEvent, Session } from '@supabase/supabase-js';
 
-const SidebarItem = ({ to, icon: Icon, label, active }: { to: string, icon: React.ElementType, label: string, active: boolean }) => (
+const SidebarItem = ({ to, icon: Icon, label, active, badge }: { to: string, icon: React.ElementType, label: string, active: boolean, badge?: number }) => (
   <Link
     to={to}
     className={`sidebar-item ${active ? 'active' : ''}`}
   >
-    <div className="active-indicator" />
+    {active && <div className="active-item-indicator" />}
     <span className="sidebar-icon-wrapper">
-      <Icon size={16} />
+      <Icon size={20} strokeWidth={active ? 2.5 : 2} />
     </span>
-    <span>{label}</span>
+    <span className="nav-label">{label}</span>
+    {badge !== undefined && badge > 0 && (
+      <span className="sidebar-badge">{badge}</span>
+    )}
   </Link>
 );
 
@@ -33,6 +37,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [pendingCount, setPendingCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
@@ -56,6 +61,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
     };
 
     initAuth();
+    fetchPendingCount();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event: AuthChangeEvent, session: Session | null) => {
       if (!mounted) return;
@@ -68,6 +74,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
         };
         setUser(userData);
         handleRedirects(userData);
+        fetchPendingCount();
       } else {
         setUser(null);
         handleRedirects(null);
@@ -81,10 +88,21 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
     };
   }, []); // Only run once on mount
 
-  // Watch for path changes to trigger redirects if needed
+  const fetchPendingCount = async () => {
+    try {
+      const tasks = await Storage.getTasks();
+      const count = (tasks || []).filter(t => !t.completed).length;
+      setPendingCount(count);
+    } catch (err) {
+      console.error("Failed to fetch pending count:", err);
+    }
+  };
+
+  // Watch for path changes to trigger redirects and update notification count
   useEffect(() => {
     if (!authLoading) {
       handleRedirects(user);
+      fetchPendingCount();
     }
   }, [location.pathname, authLoading, user]);
 
@@ -197,8 +215,22 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           <button className="mobile-toggle" onClick={() => setIsMobileMenuOpen(true)}>
             <Menu size={24} />
           </button>
+
           <div className="header-user">
             <span>স্বাগতম, <strong>{user?.name || 'User'}</strong></span>
+          </div>
+
+          <div className="header-spacer" style={{ flex: 1 }}></div>
+
+          <div className="header-right-actions">
+            <Link to="/tasks" className="notification-bell-container" title="অসম্পূর্ণ কাজ দেখুন">
+              <div className="bell-wrapper">
+                <Bell size={22} className="text-slate-500" />
+                {pendingCount > 0 && (
+                  <span className="bell-badge">{pendingCount}</span>
+                )}
+              </div>
+            </Link>
           </div>
         </header>
 
@@ -213,24 +245,25 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
         .app-layout {
           display: flex;
           min-height: 100vh;
-          background: #f8fafc;
+          background: #fcfdfe;
         }
 
         .sidebar {
-          width: 280px;
-          background: #0f172a;
-          border-right: 1px solid rgba(255,255,255,0.05);
+          width: 290px;
+          background: #0a1120;
+          border-right: 1px solid rgba(255,255,255,0.03);
           display: flex;
           flex-direction: column;
           position: fixed;
           height: 100vh;
           z-index: 100;
-          transition: transform 0.3s ease;
+          transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
           color: white;
+          box-shadow: 10px 0 50px rgba(0,0,0,0.2);
         }
 
         .sidebar-header {
-          padding: 2rem 1.5rem;
+          padding: 2.5rem 1.75rem;
           display: flex;
           align-items: center;
           justify-content: space-between;
@@ -239,10 +272,11 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
         .logo {
           display: flex;
           align-items: center;
-          gap: 0.75rem;
-          font-weight: 700;
-          font-size: 1.25rem;
-          color: white;
+          gap: 1rem;
+          font-weight: 800;
+          font-size: 1.5rem;
+          color: #ffffff;
+          letter-spacing: -0.02em;
         }
 
         .logo-icon {
@@ -258,45 +292,62 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           width: 100%;
           height: 100%;
           object-fit: contain;
-          filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.8)) drop-shadow(0 0 12px rgba(59, 130, 246, 0.4));
-          animation: pulse-glow 3s infinite ease-in-out;
+          filter: drop-shadow(0 0 12px rgba(59, 130, 246, 1));
+          animation: logo-glow 3s infinite ease-in-out;
         }
 
-        @keyframes pulse-glow {
-          0%, 100% { transform: scale(1); filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.8)); }
-          50% { transform: scale(1.05); filter: drop-shadow(0 0 15px rgba(59, 130, 246, 1)); }
+        @keyframes logo-glow {
+          0%, 100% { filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.8)); transform: scale(1); }
+          50% { filter: drop-shadow(0 0 20px rgba(59, 130, 246, 1)); transform: scale(1.02); }
         }
 
         .sidebar-nav {
           flex: 1;
-          padding: 0 1rem;
+          padding: 0 1.25rem;
           display: flex;
           flex-direction: column;
-          gap: 0.25rem;
+          gap: 0.5rem;
         }
 
         .sidebar-item {
           display: flex;
           align-items: center;
-          gap: 1rem;
-          padding: 0.875rem 1rem;
-          color: #94a3b8;
-          border-radius: 12px;
+          gap: 1.25rem;
+          padding: 0.9rem 1.25rem;
+          color: #64748b;
+          border-radius: 14px;
           font-weight: 500;
           position: relative;
-          transition: all 0.2s;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+          text-decoration: none;
         }
 
         .sidebar-item:hover {
-          background: rgba(255, 255, 255, 0.05);
-          color: white;
+          color: #e2e8f0;
+          padding-left: 1.5rem;
         }
 
         .sidebar-item.active {
-          background: var(--primary);
+          background: #2563eb;
           color: white;
           font-weight: 700;
-          box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+          box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.4);
+        }
+
+        .active-item-indicator {
+          position: absolute;
+          left: 6px;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 4px;
+          height: 24px;
+          background: white;
+          border-radius: 10px;
+        }
+
+        .nav-label {
+          font-size: 1.05rem;
+          letter-spacing: 0.01em;
         }
 
         .sidebar-icon-wrapper {
@@ -306,15 +357,22 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           width: 24px;
         }
 
-        .active-indicator {
-          display: none;
-          position: absolute;
-          left: 0;
-          top: 20%;
-          bottom: 20%;
-          width: 4px;
-          background: white;
-          border-radius: 0 4px 4px 0;
+        .sidebar-badge {
+          background: var(--danger);
+          color: white;
+          font-size: 0.65rem;
+          font-weight: 800;
+          padding: 1.5px 7px;
+          border-radius: 6px;
+          margin-left: auto;
+          box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+          animation: badge-pulse 2s infinite;
+        }
+
+        @keyframes badge-pulse {
+          0% { transform: scale(1); box-shadow: 0 0 10px rgba(239, 68, 68, 0.4); }
+          50% { transform: scale(1.05); box-shadow: 0 0 15px rgba(239, 68, 68, 0.6); }
+          100% { transform: scale(1); box-shadow: 0 0 10px rgba(239, 68, 68, 0.4); }
         }
 
         .sidebar-item.active .active-indicator {
@@ -332,11 +390,14 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           border: none;
           cursor: pointer;
           color: #fca5a5;
+          opacity: 0.8;
+          margin-top: auto;
         }
 
         .logout-btn:hover {
-          background: rgba(239, 68, 68, 0.1);
-          color: #ef4444;
+          background: rgba(248, 113, 113, 0.1);
+          color: #f87171;
+          opacity: 1;
         }
 
         .main-content {
@@ -367,9 +428,52 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           color: var(--secondary);
         }
 
-        .header-user {
-          font-size: 0.9375rem;
-          color: var(--secondary);
+        .header-right-actions {
+          display: flex;
+          align-items: center;
+          gap: 1.5rem;
+        }
+
+        .notification-bell-container {
+          position: relative;
+          color: inherit;
+          text-decoration: none;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 8px;
+          border-radius: 12px;
+          transition: 0.2s;
+          background: #f8fafc;
+        }
+
+        .notification-bell-container:hover {
+          background: #f1f5f9;
+        }
+
+        .bell-wrapper {
+          position: relative;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .bell-badge {
+          position: absolute;
+          top: -6px;
+          right: -6px;
+          background: var(--danger);
+          color: white;
+          font-size: 0.65rem;
+          font-weight: 800;
+          min-width: 18px;
+          height: 18px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 50%;
+          border: 2px solid white;
+          box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
         }
 
         .content-container {

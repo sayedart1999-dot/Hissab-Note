@@ -423,8 +423,8 @@ const History = () => {
             )}
 
             {previewAccount && (
-                <div className="modal-overlay no-print-overlay">
-                    <div className="invoice-modal card animate-slide-up">
+                <div className="modal-overlay no-print-overlay" onClick={() => setPreviewAccount(null)}>
+                    <div className="invoice-modal card" onClick={e => e.stopPropagation()}>
                         <div className="invoice-header-actions no-print">
                             <h3 className="text-lg font-bold">মেমো প্রিভিউ</h3>
                             <div className="flex gap-2">
@@ -565,7 +565,17 @@ const History = () => {
                 .action-btn { width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border); background: white; color: var(--secondary); transition: all 0.2s; }
                 .action-btn.edit:hover { background: #eff6ff; color: var(--primary); border-color: var(--primary); }
                 .action-btn.delete:hover { background: #fef2f2; color: var(--danger); border-color: var(--danger); }
-                .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 2rem; }
+                .modal-overlay { 
+                    position: fixed; 
+                    inset: 0; 
+                    background: rgba(0, 0, 0, 0.5); 
+                    backdrop-filter: blur(4px); 
+                    z-index: 9999; 
+                    display: flex; 
+                    align-items: center; 
+                    justify-content: center; 
+                    padding: 2rem; 
+                }
                 .edit-modal-content { width: 100%; max-width: 85rem; max-height: 90vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; }
                 .modal-header { padding: 1.5rem 2rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: white; }
                 .modal-body { padding: 2rem; overflow-y: auto; flex: 1; }
@@ -584,11 +594,26 @@ const History = () => {
                 .overlay-footer { display: flex; justify-content: center; gap: 1rem; margin-top: 1.5rem; }
 
                 /* Invoice Modal Styles */
-                .invoice-modal { width: 800px; max-width: 95%; max-height: 90vh; overflow-y: auto; padding: 0; background: white; border-radius: 1rem; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
-                .invoice-header-actions { padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: #f8fafc; }
-                .invoice-content { padding: 3rem; color: #1e293b; background: white; }
+                .invoice-modal { 
+                    width: 148mm; 
+                    max-width: 95%; 
+                    max-height: 95vh; 
+                    overflow-y: auto; 
+                    padding: 0; 
+                    background: white; 
+                    border-radius: 1rem; 
+                    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+                    animation: modal-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+                    margin: 2rem;
+                }
+                @keyframes modal-pop {
+                    from { opacity: 0; transform: scale(0.95); }
+                    to { opacity: 1; transform: scale(1); }
+                }
+                .invoice-header-actions { padding: 0.75rem 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: #fafafa; position: sticky; top: 0; z-index: 10; }
+                .invoice-content { padding: 1.5rem 2rem; color: #1e293b; background: white; min-height: 210mm; }
                 
-                .inv-header { text-align: center; margin-bottom: 2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 1.5rem; }
+                .inv-header { text-align: center; margin-bottom: 1.5rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 1.25rem; }
                 
                 /* Editable Company Info Styles */
                 .company-info { display: flex; flex-direction: column; align-items: center; }
@@ -606,19 +631,24 @@ const History = () => {
                 }
                 .company-input-name:focus, .company-input-sub:focus, .company-input-address:focus { background: rgba(0,0,0,0.02); border-radius: 4px; }
                 
-                .inv-meta { display: flex; justify-content: space-between; margin-top: 1.5rem; font-size: 0.9rem; }
+                .inv-customer { background: #f1f5f9; padding: 1rem 1.25rem; border-radius: 0.5rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; }
+                .customer-label { color: #64748b; margin-right: 0.5rem; font-size: 0.875rem; }
+                .customer-name { font-size: 1.1rem; color: #1e293b; }
+                .customer-mobile { color: #1e293b; }
+                .inv-meta { display: flex; justify-content: space-between; margin-top: 1.25rem; font-size: 0.9rem; padding: 0 0.5rem; }
                 .meta-row { display: flex; gap: 0.5rem; }
                 .meta-label { color: #64748b; }
                 .meta-value { font-weight: 700; }
                 
                 .inv-table { width: 100%; border-collapse: collapse; margin-bottom: 2rem; table-layout: fixed; }
-                .inv-table th { background: #f8fafc; padding: 0.75rem; border-bottom: 2px solid #e2e8f0; font-size: 0.85rem; text-transform: uppercase; color: #64748b; }
-                .inv-table td { padding: 0.75rem; border-bottom: 1px solid #e2e8f0; font-size: 0.95rem; }
+                .inv-table th { background: #f8fafc; padding: 0.875rem 0.75rem; border-bottom: 2px solid #e2e8f0; font-size: 0.85rem; text-transform: uppercase; color: #64748b; }
+                .inv-table td { padding: 0.875rem 0.75rem; border-bottom: 1px solid #e2e8f0; font-size: 0.95rem; }
                 
-                .inv-footer { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4rem; }
-                .inv-notes { flex: 1; padding-right: 2rem; font-size: 0.85rem; color: #64748b; }
-                .inv-totals { width: 250px; }
-                .total-row { display: flex; justify-content: space-between; padding: 0.35rem 0; font-size: 1rem; border-bottom: 1px solid #f1f5f9; }
+                .inv-footer { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 3.5rem; gap: 2rem; }
+                .inv-notes { flex: 1; padding-right: 1.5rem; font-size: 0.85rem; color: #64748b; line-height: 1.5; }
+                .inv-totals { width: 240px; }
+                .total-row { display: flex; justify-content: space-between; padding: 0.4rem 0; font-size: 0.9rem; align-items: center; }
+                .total-row span:last-child { min-width: 90px; text-align: right; font-weight: 700; }
                 .total-row.paid { color: var(--success); font-weight: 600; }
                 .total-row.due { border-top: 2px solid #000; margin-top: 0.5rem; padding-top: 0.5rem; font-weight: 800; font-size: 1.15rem; color: var(--danger); border-bottom: none; }
                 
@@ -632,12 +662,14 @@ const History = () => {
                 .btn-close-subtle:hover { background: #fee2e2; color: var(--danger); }
 
                 @media print {
+                    @page { size: A5; margin: 5mm; }
                     body * { visibility: hidden; }
                     #printable-area, #printable-area * { visibility: visible; }
                     #printable-area { position: absolute; left: 0; top: 0; width: 100%; padding: 0; }
                     .no-print { display: none !important; }
                     .no-print-overlay { background: white !important; backdrop-filter: none !important; }
-                    .invoice-modal { box-shadow: none !important; width: 100% !important; max-width: 100% !important; max-height: none !important; overflow: visible !important; }
+                    .invoice-modal { box-shadow: none !important; width: 100% !important; max-width: 100% !important; max-height: none !important; overflow: visible !important; margin: 0 !important; }
+                    .invoice-content { padding: 0 !important; min-height: auto !important; }
                     .company-input-name, .company-input-sub, .company-input-address { border: none !important; background: transparent !important; }
                 }
             `}</style>
